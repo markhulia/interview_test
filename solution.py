@@ -24,27 +24,21 @@ class Yummy:
         """
         Adds vectorized food document to self.__food_documents.
         :param document: str of 1 or more words
-        :return:
+        :return: list  # added for unit test
         # >>> y = Yummy()
         # >>> y.create_new_food_document('pumpkin')
         # ['pumpkin']
         """
         if not self._beautiful_string(document):
             return False
+        if self.query(document) == document:
+            # Document already exists
+            return False
         document = self._document_string_to_list(document)
-        # print(document)
         new_words = self._is_in_all_words(document)
-
-        if new_words:
-            print('Document already exists')
-            inp = input('you have to add {} to list of all words before \n'
-                        'creating a food document. Add now? [Y/N] -> '.format(new_words))
-            if inp not in 'yY':
-                return False
         self.add_to_all_words(new_words)
-        # document_vector = self._vectorize(document)
         self.__food_documents.append(self._vectorize(document))
-        return self.food_documents[-1]  # only added this line for testing purpose
+        return self.food_documents[-1]  # only added this line for unit tests
 
     @staticmethod
     def _beautiful_string(ugly):
@@ -73,7 +67,7 @@ class Yummy:
         """
         Adds word to self.__all_words
         :param word: list of strings
-        :return:
+        :return: None
 
         """
         self.__all_words += word
@@ -133,12 +127,11 @@ class Yummy:
         """
         d = {}
         if not self._beautiful_string(Q):
-            print('Your query looks ugly')
+            # Your query looks ugly
             return False
         Q = self._document_string_to_list(Q)
 
         # ignore words that are not available in self.__all_words
-        # exclude_words = self._is_in_all_words(Q)
         Q = [item for item in Q if item in self.__all_words]
         Q = self._vectorize(Q)
         for i in self.__food_documents:
@@ -148,25 +141,32 @@ class Yummy:
         # return N best matches
         indices = [k for k, v in d.items() if ((v >= 1) and (max(d.values()) == v))]
         if not indices:
-            # print('No matches found')
+            # No matches found
             return None
-        s = ''
-        documents = self._match(indices)
-        for document in documents:
-            s += ' '.join(document) + ', '
+        return self._prettify(self._match(indices))
 
+    def _prettify(self, almost_pretty):
+        """
+        Turn beauty out of generator beast...hopefully
+        :param almost_pretty: generator
+        :return: str
+        """
+        s = ''
+        for i in almost_pretty:
+            if s:
+                s += ', '
+            s += ' '.join(i)
         return s
 
     def _match(self, indices):
         """
         Match and retrieve indices from food document
         :param indices: list
-        :return:
+        :return: None
         """
         for i in indices:
             yield [self.__all_words[k] for k in range(len(self.__food_documents[i])) if
                    self.__food_documents[i][k] == 1]
-            # print(' '.join(m), end=', ')
 
 
 class YummyTests(unittest.TestCase):
@@ -187,14 +187,14 @@ class YummyTests(unittest.TestCase):
     def test_create_new_food_document(self):
         self.assertFalse(self.yum.create_new_food_document(''))
         self.assertListEqual(self.yum.create_new_food_document('chocolate milk'), [0, 1, 1])
-        self.assertListEqual(self.yum.create_new_food_document('hot milk'), [1, 0, 1])
+        self.assertFalse(self.yum.create_new_food_document('hot milk'), msg='List already exists')
 
     def test_vectorize(self):
         self.assertListEqual(self.yum._vectorize(['hot']), [1, 0, 0])
 
     def test_query(self):
-        self.assertMultiLineEqual(self.yum.query('hot chocolate'), 'chocolate, hot milk, ', )
-        self.assertMultiLineEqual(self.yum.query('milk'), 'hot milk, ')
+        self.assertMultiLineEqual(self.yum.query('hot chocolate'), 'chocolate, hot milk', )
+        self.assertMultiLineEqual(self.yum.query('milk'), 'hot milk')
         self.assertIsNone(self.yum.query('banana'))
         self.assertRaises(TypeError, self.yum.query(['poisoned apple']))
 
